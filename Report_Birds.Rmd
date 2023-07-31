@@ -1,0 +1,129 @@
+---
+output:
+  bookdown::pdf_document2:
+    template: my-template.tex
+    toc: true
+    toc_depth: 2
+    number_sections: true
+geometry: margin = 0.8in
+bibliography: "references.bib"
+csl: "vancouver-brackets.csl"
+---
+
+# Own Work Declaration {-}
+
+I confirm that all this work is my own except where indicated, and that I have:
+
+*	Clearly referenced/listed all sources as appropriate	 				
+*	Referenced and put in inverted commas all quoted text (from books, web, etc)	
+*	Given the sources of all pictures, data etc. that are not my own				
+*	Not made any use of the report(s) or essay(s) of any other student(s) either past or present	
+*	Not sought or used the help of any external professional academic agencies for the work
+*	Acknowledged in appropriate places any help that I have received from others	(e.g. fellow students, technicians, statisticians, external sources)
+*	Complied with any other plagiarism criteria specified in the Course handbook
+
+
+I understand that any false claim for this work will be penalised in accordance with [the University regulations](https://teaching.maths.ed.ac.uk/main/msc-students/msc-programmes/statistics/data-science/assessment/academic-misconduct).								
+
+Signature ............................
+
+Date ............................
+
+
+# Abstract {-}
+
+# Introduction
+
+## Data
+
+# Methodology and Models
+
+## Data Collection
+
+Capture was attempted each winter between 2007 and 2018 at a single site: a crop field near Sagunto in the province of Valencia, Spain. Each winter, capture attempts occurred monthly between October and April. Mist nets were deployed in the field, and individuals captured were either ringed and recorded, or if they had previously been ringed their ID number was recorded. The net placement and number of nets were held consistent across all capture events. 
+
+Each individual's age was recorded at first ringing: either juvenile (in the first year of life), or adult. Some ages were indeterminate, and marked as "unknown" in the data. Capture data was recorded for three passerine species: the Eurasian blackcap (*Sylvia atricapilla*), chiffchaff (*Phylloscopus collybita*), and the European robin (*Erithacus rubecula*).
+
+Data was collected for 1,889 individual passerines, across 81 capture events. 
+
+## Model Introduction
+
+Four models were fit to the capture data, each an example of the classic Cormack-Jolly-Seber (CJS) approach to estimating survival probabilities in the context of uncertain capture. Given the covariate structure for each bird, individuals are assumed to behave independently of each other, and so the total model likelihood is the product of the individual likelihoods:
+
+$$
+f(\boldsymbol{x} \mid \boldsymbol{\theta})=\prod_{i=1}^{1889} f\left(\boldsymbol{x}_i \mid \boldsymbol{\theta}\right).
+$$
+Here $\boldsymbol{x}$ is the $1889 \times 81$ matrix of capture data. Each row represents an individual's capture history, and each column a capture event so that a 1 in the $i,j$-th position indicates that individual $i$ was observed at capture event $j$, and a zero indicates that they were not observed. $\boldsymbol{x}_i$ represents the capture history for individual $i$, and $\boldsymbol{\theta}$ is the vector of model parameters.
+
+Each individual likelihood expresses the probability of the observed capture history $\boldsymbol{x}_i$, conditional on the first capture event:
+
+$$
+\begin{aligned}
+f\left(\boldsymbol{x}_i \mid \boldsymbol{\theta}\right)&=\prod_{t=f(i)+1}^{l(i)} \pi_{i,t}\ p_{i,t}^{x_{i, t}}\ \left(1-p_{i,t}\right)^{1-x_{i, t}} \times \chi_{i,l(i)}, \\
+\text{where}\\
+\pi_{i,t}&= \begin{cases}\psi_{i,t}\ , & \text { if October}  \\ \phi_{i,t}\ , & \text { if not October.} \end{cases}
+\end{aligned}
+$$
+
+Here:
+
+* $f(i)$ indicates the first capture event for individual $i$, and $l(i)$ the last. If an individual is only observed once, their contribution to the likelihood is simply $\chi_{l(i)}$.
+* $\chi_{i,l(i)}$ is the probability of never again capturing individual $i$ for the remainder of the study period, after observing them at their final capture event $l(i)$.
+* $\pi_{i,t}$ is the probability of individual $i$ surviving from capture event $t-1$ to capture event $t$ (this is a slightly idiosyncratic labelling). When $t$ is a capture event in October, $\pi_{i,t}$ is the probability of inter-winter survival: survival to October from the previous April. Otherwise $\pi_{i,t}$ is the probability of surviving the previous month, an intra-winter survival probability. These two kinds of survival probabilities are assigned different symbols: $\psi_{i,t}$ and $\phi_{i,t}$ respectively. They may also have different covariate structures.
+* $p_{i,t}$ is the capture probability for individual $i$ at capture event $t$, assuming that they are living and have not permanently migrated from the capture site.
+
+Note that probabilities of permanent migration and death are confounded in this model structure. This is discussed more in the results section [tk].
+
+$\chi_{i,l(i)}$ is constructed recursively...
+
+## Covariate Structures
+
+The probabilities presented in the previous section are allowed to vary by individual $i$ and capture event $t$. IN this section we describe in more detail the covariate structure of the four models.
+
+### Intra-Winter Survival Covariates
+
+### Inter-Winter Survival Covariates
+
+### Capture Probability Covariates
+
+## Model Fitting
+
+Models are fit in Stan, a probabilistic programming language for Bayesian modelling, implementing Markov chain Monte Carlo (MCMC). This approach chosen for several reasons:
+
+* Bayesian approach chosen for practical rather than philosophical reasons, permits more straightforward implementation on random effects, as well as relatively straightforward derivation of posterior distributions for arbitrary quantities of interest (e.g. see model comparison section [tk]).
+* Stan chosen partly due to familiarity, partly due to a well-developed supporting infrastructure for Stan in R (tidybayes), and partly due to a preference for Hamiltonian Monte Carlo over the Gibbs sampling based approaches. 
+
+Short description of Hamiltonian Monte Carlo and No U-Turn Sampler. Warns about divergent transitions, each individual transition step more computationally expensive, but more efficient proposals.
+
+## Priors
+
+
+
+## Performance on Simulated Data
+
+## Handling Missing Data
+
+The age at first capture was recorded for each individual in the study. Individuals were recorded as either juveniles (within first year of life), or adults. In some cases, age could not be determined by visual inspection, and so age was described as "unknown". Age at initial ringing is unknown for 145 of the 1,889 individuals in the study.
+
+As the survival probabilities that are the target of our inference may depend on age, a method of handling missing age covariates is required.
+
+Some of the missing data can be imputed with use of some basic assumptions. If an individual was first captured during one winter period (October-April) and was recorded as having indeterminate age, we assume that by the following October they are an adult. They will be treated as an adult for the remainder of the study period. This follows from the definition of juvenile as being within the first year of life. Therefore the scope of our missing data approach is limited to the winter of first capture for each of the 145 individuals.
+
+One approach for missing covariate imputation within the context of MCMC-based inference is to create a latent parameter for each unknown covariate, with priors set so as to permit the parameters to vary over the possible range of covariate values. At each sampling step, the covariate is effectively imputed, and the model likelihood given this imputation is recorded. This is repeated as many times as there are sampling steps, typically thousands, and in this way a posterior probability distribution for each missing covariate is approximated. One major benefit of this approach is that the imputation is conducted in the context of the target model: there is no need for a separate imputation model. Another is that the uncertainty implied by the imputation is estimated. 
+
+However, in this case the missing covariate data is discrete: the available options are 1 (for an adult) or 0 (for a juvenile), and Stan does not permit sampling of discrete parameters. Instead the approach taken 
+
+# Results
+
+## Model Comparison
+
+## Intra-Winter Survival
+
+## Inter-Winter Survival
+
+# Conclusion
+
+# Supplementatry Material {-}
+
+# References {-}
+
