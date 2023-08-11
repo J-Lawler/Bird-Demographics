@@ -45,9 +45,9 @@ df_blackcap_raw <- read_csv2("Data_Raw/CR.blackcap_FixRing.csv")
 df_blackcap <- df_blackcap_raw|>
   mutate(Individual = 1:nrow(df_blackcap_raw))|>
   pivot_longer(-c(Individual, age_at_ringing), names_to = "Date", values_to = "Present")|>
-  mutate(Winter = as.numeric(str_sub(Date,1,4)),
+  mutate(Year = as.numeric(str_sub(Date,1,4)),
          Month_Num = as.numeric(str_sub(Date,5,6)),
-         Year = if_else(Month_Num < 6, Winter + 1, Winter), 
+         Winter = if_else(Month_Num > 9, Year, Year-1), 
          Month = months[Month_Num])|>
   select(Year, Winter, Month, Month_Num, Individual,
          Age_Ring = age_at_ringing, Present)|>
@@ -72,9 +72,9 @@ df_chiffchaff_raw <- read_csv2("Data_Raw/CR.chifchaf_FixRing.csv")
 df_chiffchaff <- df_chiffchaff_raw|>
   mutate(Individual = 1:nrow(df_chiffchaff_raw))|>
   pivot_longer(-c(Individual, age_at_ringing), names_to = "Date", values_to = "Present")|>
-  mutate(Winter = as.numeric(str_sub(Date,1,4)),
+  mutate(Year = as.numeric(str_sub(Date,1,4)),
          Month_Num = as.numeric(str_sub(Date,5,6)),
-         Year = if_else(Month_Num < 6, Winter + 1, Winter), 
+         Winter = if_else(Month_Num > 9, Year, Year-1), 
          Month = months[Month_Num],
          Individual = Individual + num_blackcap)|> # relabel individuals
   select(Year, Winter, Month, Month_Num, Individual,
@@ -96,9 +96,9 @@ df_robin_raw <- read_csv2("Data_Raw/CR.robin_FixRing.csv")
 df_robin <- df_robin_raw|>
   mutate(Individual = 1:nrow(df_robin_raw))|>
   pivot_longer(-c(Individual, age_at_ringing), names_to = "Date", values_to = "Present")|>
-  mutate(Winter = as.numeric(str_sub(Date,1,4)),
+  mutate(Year = as.numeric(str_sub(Date,1,4)),
          Month_Num = as.numeric(str_sub(Date,5,6)),
-         Year = if_else(Month_Num < 6, Winter + 1, Winter),
+         Winter = if_else(Month_Num > 9, Year, Year-1),
          Month = months[Month_Num],
          Individual = Individual + num_blackcaps_chiffchaffs)|> # relabel individuals
   select(Year, Winter, Month, Month_Num, Individual,
@@ -108,8 +108,6 @@ df_robin <- df_robin_raw|>
 
 
 write_csv(df_robin, file = "Data_Clean/df_robin.csv")
-
-
 
 
 

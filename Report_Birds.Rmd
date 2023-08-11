@@ -5,21 +5,50 @@ output:
     toc: true
     toc_depth: 2
     number_sections: true
+    extra_dependencies: ["graphicx"]
 geometry: margin = 0.8in
 bibliography: "references.bib"
 csl: "vancouver-brackets.csl"
 ---
+
+
+
+```{r echo = FALSE, warning = FALSE}
+
+library(ggplot2)
+library(gridExtra) 
+
+# Software Used 
+
+# library(softbib)
+# softbib()
+
+```
+
+\clearpage
 
 # Own Work Declaration {-}
 
 I confirm that all this work is my own except where indicated, and that I have:
 
 *	Clearly referenced/listed all sources as appropriate	 				
+
+
 *	Referenced and put in inverted commas all quoted text (from books, web, etc)	
+
+
 *	Given the sources of all pictures, data etc. that are not my own				
+
+
 *	Not made any use of the report(s) or essay(s) of any other student(s) either past or present	
+
+
 *	Not sought or used the help of any external professional academic agencies for the work
+
+
 *	Acknowledged in appropriate places any help that I have received from others	(e.g. fellow students, technicians, statisticians, external sources)
+
+
 *	Complied with any other plagiarism criteria specified in the Course handbook
 
 
@@ -29,26 +58,30 @@ Signature ............................
 
 Date ............................
 
+\clearpage
 
-# Abstract {-}
+# Executive Summary {-}
+
+In this study we attempt to model the survival of several migratory passerine species over both winter and breeding seasons, using capture-recapture data collected at a single site. The approach taken is an adaptation of the Cormack-Jolly-Seber model for estimating survival under conditions of uncertain capture. Estimation is performed using Markov chain Monte Carlo methods through the Bayesian probabilistic programming software Stan. Various covariate structures are tested, with a model that includes both individual and time-varying effects having the best estimated out-of-sample predictive power.
+
+Some key takeaways are that passerines in their first year of life have a dramatically lower chance of survival over winter, whereas migratory patterns and survival over the breeding season are governed more by species.
+
 
 # Introduction
 
-## Data
+European passerine birds tend to migrate seasonally, wintering along the Mediterranean in Southern Europe and North Africa and spending the breeding season further north. Winter migration to the south is a fruitful strategy if the physical risks and energy costs associated migration are outweighed by the higher chance of winter survival, whether due to less harsh weather conditions or a greater abundance of food. This study aims to use capture-recapture data to make inferences about the factors that affect winter survival, as well as survival and migratory patterns between each winter.
 
-# Methodology and Models
-
-## Data Collection
-
-Capture was attempted each winter between 2007 and 2018 at a single site: a crop field near Sagunto in the province of Valencia, Spain. Each winter, capture attempts occurred monthly between October and April. Mist nets were deployed in the field, and individuals captured were either ringed and recorded, or if they had previously been ringed their ID number was recorded. The net placement and number of nets were held consistent across all capture events. 
+Capture was attempted each winter between January 2007 and April 2018 at a single site: a crop field near Sagunto in the province of Valencia, Spain. Each winter, capture attempts occurred monthly between October and April. Mist nets were deployed in the field, and individuals captured were either ringed and recorded, or if they had previously been ringed their ID number was recorded. The net placement and number of nets were held consistent across all capture events. 
 
 Each individual's age was recorded at first ringing: either juvenile (in the first year of life), or adult. Some ages were indeterminate, and marked as "unknown" in the data. Capture data was recorded for three passerine species: the Eurasian blackcap (*Sylvia atricapilla*), chiffchaff (*Phylloscopus collybita*), and the European robin (*Erithacus rubecula*).
 
 Data was collected for 1,889 individual passerines, across 81 capture events. 
 
+# Methodology and Models
+
 ## Model Introduction
 
-Four models were fit to the capture data, each an example of the classic Cormack-Jolly-Seber (CJS) approach to estimating survival probabilities in the context of uncertain capture. Given the covariate structure for each bird, individuals are assumed to behave independently of each other, and so the total model likelihood is the product of the individual likelihoods:
+Four models were fit to the capture data, each an example of the classic Cormack-Jolly-Seber (CJS) approach to estimating survival probabilities in the context of uncertain capture [@cormack_estimates_1964; @jolly_explicit_1965; @seber_note_1965]. Given the covariate structure for each bird, individuals are assumed to behave independently of each other, and so the total model likelihood is the product of the individual likelihoods:
 
 $$
 f(\boldsymbol{x} \mid \boldsymbol{\theta})=\prod_{i=1}^{1889} f\left(\boldsymbol{x}_i \mid \boldsymbol{\theta}\right).
@@ -67,39 +100,341 @@ $$
 
 Here:
 
-* $f(i)$ indicates the first capture event for individual $i$, and $l(i)$ the last. If an individual is only observed once, their contribution to the likelihood is simply $\chi_{l(i)}$.
+* $f(i)$ indicates the first capture event for individual $i$, and $l(i)$ the last. If an individual is only observed once, their contribution to the likelihood is simply $\chi_{i,l(i)}$.
 * $\chi_{i,l(i)}$ is the probability of never again capturing individual $i$ for the remainder of the study period, after observing them at their final capture event $l(i)$.
-* $\pi_{i,t}$ is the probability of individual $i$ surviving from capture event $t-1$ to capture event $t$ (this is a slightly idiosyncratic labelling). When $t$ is a capture event in October, $\pi_{i,t}$ is the probability of inter-winter survival: survival to October from the previous April. Otherwise $\pi_{i,t}$ is the probability of surviving the previous month, an intra-winter survival probability. These two kinds of survival probabilities are assigned different symbols: $\psi_{i,t}$ and $\phi_{i,t}$ respectively. They may also have different covariate structures.
+* $\pi_{i,t}$ is the probability of individual $i$ surviving from capture event $t-1$ to capture event $t$ (this is a slightly idiosyncratic labelling, it's more typical for $\pi_{i,t}$ to refer to survival probability between $t$ and $t+1$). When $t$ is a capture event in October, $\pi_{i,t}$ is the probability of inter-winter survival: survival to October from the previous April. Otherwise $\pi_{i,t}$ is the probability of surviving the previous month, an intra-winter survival probability. These two kinds of survival probabilities are assigned different symbols: $\psi_{i,t}$ and $\phi_{i,t}$ respectively. They will also have different covariate structures.
 * $p_{i,t}$ is the capture probability for individual $i$ at capture event $t$, assuming that they are living and have not permanently migrated from the capture site.
 
-Note that probabilities of permanent migration and death are confounded in this model structure. This is discussed more in the results section [tk].
+Note that probabilities of permanent migration and death are confounded in this model structure. This is discussed more in the following section.
 
-$\chi_{i,l(i)}$ is constructed recursively...
+$\chi_{i,l(i)}$ is constructed recursively. For individual $i$ and final capture event (April 2018) $T$, $\chi_{i,T}=1$: there is no probability of recording this bird after the study period is concluded. From there, $\chi$ is calculated working backwards from $T$ to $l(i)$ as follows:
 
-## Covariate Structures
+$$
+\chi_{i,t-1}=\left(1-\phi_{i,t}\right)+\quad \phi_{i,t}\left(1-p_{i,t}\right) \chi_{i,t}
+$$
+I.e. the probability of not observing individual $i$ after capture event $t-1$ is the probability that they die before capture event $t$ plus the probability that they survive to $t$ but are not observed, and are also not observed at any event after $t$.
 
-The probabilities presented in the previous section are allowed to vary by individual $i$ and capture event $t$. IN this section we describe in more detail the covariate structure of the four models.
 
-### Intra-Winter Survival Covariates
+## Probabilities and their Covariate Structures
 
-### Inter-Winter Survival Covariates
+The probabilities presented in the previous section are allowed to vary by individual $i$ and capture event $t$. In this section we describe in more detail the covariate structure of the four models. Each builds in complexity from the one before.
 
-### Capture Probability Covariates
+### Intra-Winter Survival
+
+Survival probabilities are estimated for each month between October and April. $\phi_{i,t}$ represents the probability that individual $i$ survives between capture events $t-1$ and $t$. There are therefore six survival probabilities estimated for each complete winter in the data.
+
+Note that the probability that an individual survives over a winter month is confounded with the probability that they do not permanently migrate from the capture site. There is no way to distinguish between death and permanent migration in the data collected. The seasonal migration pattern of passerines means that this confounding is likely of less importance for the interpretation of intra-winter survival probabilities. However it represents a substantial factor for the interpretation of inter-winter 'survival' probabilities, as discussed in the next subsection.  
+
+The four models estimated in this paper permit the intra-winter $\phi$ probabilities to vary in different ways.  
+
+### Intra-Winter Covariates: Model A {-} 
+
+
+In model A, all intra-winter survival probabilities are constant. For all individuals $i$ and events $t$,
+
+$$
+\phi_{[i,t]} = \phi.
+$$
+
+### Intra-Winter Covariates: Model B {-} 
+
+
+In model B, intra-winter survival probabilities depend only on species, there is no time-varying component:
+
+$$
+\phi_{[i,t]} = \phi_i = \alpha^{\phi}_{species[i]}.
+$$
+
+There are three species parameters, implemented using random effects. This permits partial pooling of information about intra-winter survival across species.
+
+### Intra-Winter Covariates: Model C {-} 
+
+
+In model C, intra-winter survival probabilities depend on species and age (adult or juvenile), there is no time-varying component:
+
+$$
+\phi_{[i,t]} = \phi_i = \alpha^{\phi}_{species[i]} + \beta^{\phi}_{adult} \times \text{adult}[i].
+$$
+
+Here, $adult[i]$ is 1 if the individual is an adult, and 0 otherwise (see the Handling Missing Data section for treatment when age is unknown). The species parameter acts as an intercept, and can be interpreted as the baseline survival probability for juvenile birds (when converted to the probability scale through the logistic function). For adult birds this baseline is modified by the $\beta^{\phi}_{adult}$ parameter.
+
+Winter survival probabilities for many species are lower for the first year of life, making age perhaps the most plausible covariate candidate for intra-winter survival.
+
+### Intra-Winter Covariates: Model D {-} 
+
+
+In model D, a time-varying component is introduced:
+
+$$
+\phi_{[i,t]} = \alpha^{\phi}_{species[i]} + \beta^{\phi}_{adult} \times \text{adult}[i] + \beta^{\phi}_{month[t]} + \beta^{\phi}_{winter[t]}.
+$$
+
+Here, there are six month parameters (one for each of November-April), with the appropriate parameter selected by the index $month[i,t]$. There are 11 winter parameters, where a single parameter covers the entire October-April period (i.e. the parameter does not vary by calendar year, but by winter).
+
+Intra-winter survival probabilities are now permitted to vary by both month and winter. As capture events are uniquely specified by a month and a winter, this implies separate probabilities for each capture event. However, the two vectors of parameters are fit using random effects, to allow partial pooling between months, and between years. This reduces the effective number of parameters being fit.
+
+The month parameters permit an estimate of the differing survival probabilities at differing points in winter. For example, we might hypothesis that December-January has a lower survival probability than March-April, due to weather conditions, scarcity of food etc. The winter parameters allow for some winters to have a lower probability of survival than others. Again this may be caused by various environmental factors: some winters are harsher than others.
+
+### Inter-Winter Survival
+
+Inter-winter survival probabilities $\psi_{i,t}$ estimate the probability of 'survival' for individual $i$ between April and October, which may be permitted to vary from year-to-year. However, here the confounding between death and permanent migration may be expected to have a significant effect. 
+
+A typical migration pattern for each of the three species in this study is to spend the breeding season in  Northern Europe and winter in Southern Europe and North Africa. However individuals may not migrate each year, and may not migrate to the same wintering grounds. An assumption implicit in the models fit for this paper is that the birds are either available for capture at the site each winter after first capture, or have died or permanently migrated to another wintering ground. I.e. it is assumed that no individual winters in Valencia one winter, winters elsewhere the next, and then returns to Valencia the following year. There is some evidence for this assumption: blackcaps return (if alive) to the same wintering grounds year after year [@cuadrado_all_1995].
+
+The covariate structures for inter-winter survival probabilities are described below.
+
+### Inter-Winter Covariates: Model A {-}
+
+
+In model A, all inter-winter survival probabilities are constant. For all individuals $i$ and events $t$,
+
+$$
+\psi_{[i,t]} = \psi.
+$$
+
+### Inter-Winter Covariates: Models B & C {-}
+
+In models B & C, intra-winter survival probabilities depend only on species, there is no time-varying component:
+
+$$
+\psi_{[i,t]} = \psi_i = \alpha^{\psi}_{species[i]}.
+$$
+
+As described for intra-winter probabilities, the three species parameters are implemented with random effects.
+
+
+### Inter-Winter Covariates: Model D {-}
+
+In model D, a time-varying component is introduced:
+
+$$
+\psi_{[i,t]} = \alpha^{\psi}_{species[i]} + \beta^{\psi}_{year[t]}.
+$$
+
+Here the inter-winter survival probabilities are permitted to vary each year. 
+
+
+
+### Capture Probability
+
+Assuming that at capture event $t$ individual $i$ has neither died nor permanently migrated away from the capture site, the probability that they are captured is given by $p_{[i,t]}$.
+
+The covariate structure for each model mirrors those described for intra-winter surival probabilities, and so will not be described in detail.
+
+### Capture Covariates: Model A {-} 
+
+$$
+p_{[i,t]} = p.
+$$
+
+### Capture Covariates: Model B {-} 
+
+$$
+p_{[i,t]} = p_i = \alpha^{p}_{species[i]}.
+$$
+
+### Capture Covariates: Model C {-} 
+
+$$
+p_{[i,t]} = p_i = \alpha^{p}_{species[i]} + \beta^{p}_{adult} \times \text{adult}[i].
+$$
+
+### Capture Covariates: Model D {-} 
+
+$$
+p_{[i,t]} = \alpha^{p}_{species[i]} + \beta^{p}_{adult} \times \text{adult}[i] + \beta^{p}_{month[t]} + \beta^{p}_{winter[t]}.
+$$
 
 ## Model Fitting
 
-Models are fit in Stan, a probabilistic programming language for Bayesian modelling, implementing Markov chain Monte Carlo (MCMC). This approach chosen for several reasons:
+Models are fit in Stan, a probabilistic programming language for Bayesian modelling, implementing Markov chain Monte Carlo (MCMC). A Bayesian approach was chosen more for practical than philosophical reasons. It permits a more straightforward implementation of random effects structures, as well as relatively easy derivation of posterior distributions for arbitrary quantities of interest. For example, the log-likelihood at the level of the individual birds described in the Model Comparison section.
 
-* Bayesian approach chosen for practical rather than philosophical reasons, permits more straightforward implementation on random effects, as well as relatively straightforward derivation of posterior distributions for arbitrary quantities of interest (e.g. see model comparison section [tk]).
-* Stan chosen partly due to familiarity, partly due to a well-developed supporting infrastructure for Stan in R (tidybayes), and partly due to a preference for Hamiltonian Monte Carlo over the Gibbs sampling based approaches. 
+The Stan language was chosen partly due to familiarity, partly due to a well-developed supporting infrastructure in R [@stan_development_team_rstan_nodate; @vehtari_loo_2022; @kay_tidybayes_2023], and partly due to a preference for Hamiltonian Monte Carlo (HMC) over Gibbs sampling based approaches. 
 
-Short description of Hamiltonian Monte Carlo and No U-Turn Sampler. Warns about divergent transitions, each individual transition step more computationally expensive, but more efficient proposals.
+Markov chain Monte Carlo methods are a collection of numerical approaches to estimating the 'typical set' of a target probability distribution $\boldsymbol\pi$ (often but not necessarily a Bayesian posterior distribution). The idea is to construct a Markov chain whose stationary distribution is $\boldsymbol\pi$. At each step of the Markov chain (with a given set of parameter values), the value of distribution $\boldsymbol\pi$ is recorded^[More precisely, the value of some function $f$ is recorded. Where $f$ is only required to be proportional to the density of the target distribution $\boldsymbol\pi$.], and a proposal for the next step (set of parameter values) is made. This proposal is either accepted, leading to a new sample, or rejected and a new proposal made.
+
+The precise methods by which step proposals are made and evaluated distinguish different MCMC approaches. In general as MCMC methods have advanced (and available computing power has grown) the emphasis has moved towards smarter, more adaptive proposals that allow efficient exploration of the target distribution in fewer steps, at the expense of higher computational load per step. Richard McElreath cites the following aphorism from E.T. Jaynes on this point [@mcelreath_statistical_2020]:
+
+> *It appears to be a quite general principle that, whenever there is a randomized way of doing something, then there is a nonrandomized way that delivers better performance but requires more thought*[@jaynes_probability_2002].
+
+McElreath's 'Statitical Rethinking' is a key source for the following brief and informal sketch of the history of MCMC methods.
+
+Markov chain Monte Carlo methods were first developed in Los Alamos by Metropolis, Rosenbluth, Rosenbluth, Teller, and Teller [@metropolis_equation_2004]. An early extension of the 'Metropolis algorithm', better suited to the problem of estimating a probability distribution is due to Hastings [@hastings_monte_1970]. In the Metropolis-Hastings algorithm, proposals are made by sampling from an arbitrary proposal distribution (often a Gaussian distribution is used) that depends on the current sample value. The distribution is sampled at the proposal step and at the current step and these values compared to decide whether the proposal is accepted. If the proposal is rejected, the current value is used again, and a new proposal is generated.   
+
+Gibbs sampling extends this approach by adopting proposals based the conditional distributions $\boldsymbol\pi(x_j\mid x_1, x_2, \dots, x_{j-1},x_{j+1}, \dots, x_n)$ instead of the arbitrary proposal distributions used in earlier Metropolis-Hastings implementations [@geman_stochastic_1984]. In the two-dimensional case, a sequence of samples is created by drawing alternately from:
+
+$$
+\begin{aligned}
+X_j^{\prime} & \sim \boldsymbol\pi\left(x \mid Y_j^{\prime}=y_j^{\prime}\right) \\
+Y_{j+1}^{\prime} & \sim \boldsymbol\pi\left(y \mid X_j^{\prime}=x_j^{\prime}\right).
+\end{aligned}
+$$
+
+The sequence $Y_0^{\prime}, X_0^{\prime}, Y_1^{\prime}, X_1^{\prime}, Y_2^{\prime}, X_2^{\prime}, \ldots, Y_k^{\prime}, X_k^{\prime}$ converges to the target distribution [@casella_explaining_1992]. Gibbs sampling is enormously popular, seeing widespread use through implementations like the popular JAGS program [@plummer_jags_2003].
+
+Hamiltonian Monte Carlo extends the trend of increasingly intelligent and adaptive proposals by exploiting information about the local geometry of the target distribution at each sample. Radford Neal has a popular introduction and description of its history [@neal_mcmc_2011].  A physical analogy is often used in explanations of HMC: Neal suggests the example of a frictionless puck that slides over a three-dimensional surface. The horizontal (x and y) dimensions represent a parameter-space, and the height of the surface is the analogue of the (minus log) density of the target distribution. The lower regions of this surface represent areas of higher probability density, and vice versa.
+
+This distribution is restricted to two parameter dimensions for the sake of analogy only: HMC extends to much higher dimensions, and it's performance there represents one of its key advantages over Metropolis-Hastings and Gibbs sampling approaches. For example, with many parameters narrow regions of high probability become more likely. Here Gibbs sampling can be prone to having many of the proposals it generates be rejected, substanially slowing the exploration of the distribution. 
+
+At each step of the Markov chain, this puck is flicked in a random direction with a random momentum. It's position and momentum are tracked as it moves over the surface, sometimes climbing (losing momentum but gaining kinetic energy), and sometimes falling (gaining momentum but losing kinetic energy). After a given time the puck is stopped and the height of the surface (the density of the target distribution) is recorded. The process is repeated.
+
+The path and momentum of the 'puck' are tracked by splitting the time taken for each step into a number of smaller 'leapfrog' steps. Discrete versions of Hamilton's equations are calculated at each leapfrog step, estimating the local gradient of the surface and the momentum of the puck to generate the path it travels until the next leapfrog step.
+
+As can be seen with this informal analogy of each step in the Markov chain, each step between samples is computationally expensive relative to other MCMC methods. However the overall trajectory is typically efficient, requiring fewer samples than other MCMC approaches [@betancourt_conceptual_2018]. In contrast to the earlier methods described, HMC uses information about every dimension of the target distribution at once for each step to produce proposals, not just one or a handful of dimensions. This is the source of its improved performance in situations like the narrow ridge of high probability described above.
+
+Stan implements a version of Hamiltonian Monte Carlo called the No U-Turn Sampler (NUTS) that adaptively sets the number of leapfrog steps and the length of the path between each leapfrog step [@homan_no-u-turn_2014], requiring little hand-tuning of the algorithm.
 
 ## Priors
 
+Each of the parameters estimated in the model requires a prior distribution to be assigned to it. The over-arching approach taken in this analysis is to choose priors on the parameters such that when converted to the probability scale via the logistic function, the resulting probabilities (survival and capture) assign reasonably uniform probability to each point over the entire [0,1] interval.
+
+Practically, this means that parameters will broadly range over -4 to +4, as this covers functionally the entire [0,1] interval when converted to the probability scale, as can be seen in Figure \@ref(fig:plt-logistic).
+
+```{r plt-logistic, fig.cap="The logistic function converts values on the real line to the interval [0,1] for use as probabilities.", echo = FALSE, out.width="75%"}
+
+plt_logistic <- readRDS(file = "Plots/plt_logistic.rds")
+
+plt_logistic
+
+```
+
+Expanding the range much beyond $\pm 6$ would result in prior distributions that assign most plausibility to very low or very high probabilities, as can be seen in Figure \@ref(fig:plt-logistic-output), which depicts samples from a $\text{Normal}(0,10)$ distribution^[Note that throughout this report, normal distributions are reported as Normal(mean, standard deviation) for consistency with Stan.].
+
+```{r plt-logistic-output, fig.cap="Samples from a Normal(0,10) distribution after conversion via the logistic function.", echo = FALSE, out.width="75%"}
+
+plt_logistic_output <- readRDS(file = "Plots/plt_logistic_output.rds")
+
+plt_logistic_output
+
+```
 
 
-## Performance on Simulated Data
+### Species Parameters
+
+As described in the section above on covariate structures, random effects are used for the species paramters. This permits each species to potentially have its own parameter value, while still pooling some information across species instead of treating them effectively as three entirely separate models.
+
+Species parameters are created separately for intra and inter-winter survival probabilities and capture probabilities. The same prior structure is used for each of these parameters. In the model itself there are three vectors that might be labelled $\alpha^\phi_{species}$,  $\alpha^\psi_{species}$,  and $\alpha^p_{species}$. Each of these has length three: one parameter for each species. Each of these vectors have their own, independent random effects structures. I.e.
+
+$$
+\begin{aligned}
+\alpha^\phi_{species} &\sim \text{Normal}(\mu^{\phi}_{species},\sigma^{\phi}_{species}),\\
+\alpha^\psi_{species} &\sim \text{Normal}(\mu^{\psi}_{species},\sigma^{\psi}_{species}),\\
+\alpha^p_{species} &\sim \text{Normal}(\mu^{p}_{species},\sigma^{p}_{species}).\\
+\end{aligned}
+$$
+
+So the species parameter for blackcap intra-winter survival probability has prior $\text{Normal}(\mu^{\phi}_{species},\sigma^{\phi}_{species})$, and so does the parameter for robins. This permits sharing of information across species as the $\mu^{\phi}_{species}$ and $\sigma^{\phi}_{species}$ are estimated. 
+
+However, the species parameter for blackcap *inter-winter* survival probability is completely independent from the intra-winter prior. Information is shared across species but no information is shared across intra, inter-winter, and capture probabilities.
+
+Each of the $\mu_{species}$ and $\sigma_{species}$ parameters are drawn from the same distribution. For the intra-winter parameters:
+
+$$
+\begin{aligned}
+\mu^{\phi}_{species} &\sim \text{Normal}(0, 0.5), \\
+\sigma^{\phi}_{species} &\sim \text{Half-Normal}(1, 0.25), \\
+\end{aligned}
+$$
+
+and the same for the $\psi$ and $p$ parameters.
+
+The prior distribution for each $\mu_{species}$ is centred on 0, since this returns 0.5 when converted to the probability scale using the logistic function. The aim when setting the variance is to provide a relatively uniform distribution when converted to the probability scale, as described above in the introduction to the prior section.
+
+### Age Parameters
+
+The priors for the adult parameters are as follows:
+
+$$
+\begin{aligned}
+\beta_{adult}^\phi &\sim \text{Normal}(0, 0.5), \\
+\beta_{adult}^p &\sim \text{Normal}(0, 0.5).
+\end{aligned}
+$$
+
+These place most of the prior probability for the parameter between -1 and 1. The effect that this will have on the probability scale will vary depending on the intercept (species) parameter.  The mean prior effect is 0. For the effect of adult status on intra-winter survival $\beta_{adult}^\phi$, the priors could reasonbly be set to be positive: it is unlikely that adult birds would be less likely to suvive the winter than juvenile birds. However the choice has little effect on the model inferences: with the volume of data available these priors quickly become overwhelmed.  
+
+
+### Time Parameters
+
+The priors for the time parameters are as follows:
+
+$$
+\begin{aligned}
+\beta_{month}^\phi &\sim \text{Normal}(\mu_{month}^\phi,\sigma_{month}^\phi) \\
+\beta_{winter}^\phi &\sim \text{Normal}(\mu_{winter}^\phi,\sigma_{winter}^\phi)\\
+\\
+\beta_{winter}^\psi &\sim \text{Normal}(\mu_{winter}^\psi,\sigma_{winter}^\psi) \\
+\\
+\beta_{month}^p &\sim \text{Normal}(\mu_{month}^p,\sigma_{month}^p) \\
+\beta_{winter}^p &\sim \text{Normal}(\mu_{winter}^p,\sigma_{winter}^p)
+\end{aligned}
+$$
+
+Each of the $\mu$ and $\sigma$ random effects parameters have the following distributions:
+
+$$
+\begin{aligned}
+\mu &\sim \text{Normal}(0, 0.5) \\
+\sigma &\sim \text{Half-Normal}(1, 0.25)
+\end{aligned}
+$$
+This random effects structure permits pooling information across months, and across years (winters). This also reduces the effective number of parameters in the model.
+
+
+### Parameters for Missing Age Covariates 
+
+Each individual with missing age covariate data is given its own parameter representing the probability that that individual was an adult during the winter they were first captured. There are 145 such individuals, each with little data (at most seven capture events where their age was unknown, since they are presumed to have aged into adulthood by the following winter). This makes it implausible that each parameter could be separately estimated with any reasonable degree of confidence.  
+
+A random effects structure was therefore imposed to permit information sharing between individuals with missing data. The hope is that this model structure could identify if it was much more likely for juveniles or adults to be classified as age unknown. However, as described in the results section, there appears to be limited evidence in the data to be able to classify which direction of mis-classification is most common, and certainly not enough to be able to estimate the true age of any given individual where age is missing.
+
+Here is the structure:
+
+$$
+\begin{aligned}
+p_{adult} &\sim \text{Beta}(\alpha_{miss},\beta_{miss}),\\
+\\
+\alpha_{miss} &\sim \text{Half-Normal}(1,0.2),\\
+\beta_{miss} &\sim \text{Half-Normal}(1,0.2).\\
+\end{aligned}
+$$
+
+Here the prior beta distribution produces relatively uniform probabilities over the [0,1] interval. $p_{adult}$ is a vector of length 145, one parameter for each individual with missing age data.
+
+### Simulating from Priors
+
+In this section we examine the effect of the priors on the probability scale. Figure \@ref(fig:plt-phi-prior) shows the histograms implied by the prior distributions for the intra-winter $\phi$ parameters, Figure \@ref(fig:plt-psi-prior) the inter-winter survival probabilities, and Figure \@ref(fig:plt-p-prior) the capture probabilities.  
+
+Histograms are shown for each species and age combination, but for brevity only one capture event (November 2008 for the $\phi$ and capture probabilities, and October 2009 for the $\psi$ probabilities).
+
+For all histograms, substantial probability is assigned to each part of the [0,1] interval. In the absence of more informed beliefs about survival and capture probabilities these priors appear reasonable. In addition, given the volume of data available the priors should have a relatively low contribution to the posterior parameter distributions. This is the case, for example, for the capture probabilities, as will be seen in the results section.
+
+```{r plt-phi-prior, fig.cap="Intra-Winter Survival Probabilities Implied by Priors.", echo = FALSE, out.width="75%"}
+
+plt_phi_prior <- readRDS(file = "Plots/plt_phi_prior.rds")
+
+plt_phi_prior
+
+```
+
+
+```{r plt-psi-prior, fig.cap="Inter-Winter Survival Probabilities Implied by Priors.", echo = FALSE, out.width="75%"}
+
+plt_psi_prior <- readRDS(file = "Plots/plt_psi_prior.rds")
+
+plt_psi_prior
+
+```
+
+
+```{r plt-p-prior, fig.cap="Capture Probabilities Implied by Priors.", echo = FALSE, out.width="75%"}
+
+plt_p_prior <- readRDS(file = "Plots/plt_p_prior.rds")
+
+plt_p_prior
+
+```
+
+
 
 ## Handling Missing Data
 
@@ -111,19 +446,253 @@ Some of the missing data can be imputed with use of some basic assumptions. If a
 
 One approach for missing covariate imputation within the context of MCMC-based inference is to create a latent parameter for each unknown covariate, with priors set so as to permit the parameters to vary over the possible range of covariate values. At each sampling step, the covariate is effectively imputed, and the model likelihood given this imputation is recorded. This is repeated as many times as there are sampling steps, typically thousands, and in this way a posterior probability distribution for each missing covariate is approximated. One major benefit of this approach is that the imputation is conducted in the context of the target model: there is no need for a separate imputation model. Another is that the uncertainty implied by the imputation is estimated. 
 
-However, in this case the missing covariate data is discrete: the available options are 1 (for an adult) or 0 (for a juvenile), and Stan does not permit sampling of discrete parameters. Instead the approach taken 
+However, in this case the missing covariate data is discrete: the available options are 1 (for an adult) or 0 (for a juvenile), and Stan does not permit sampling of discrete parameters. Instead the approach taken is to assign a  parameter for each individual with missing age data representing the probability that that individual was an adult. For individual $i$ at capture event $t$, an example survival probability might be:
+
+$$
+\begin{aligned}
+\phi_{i,t} &= \alpha_\text{species} + \beta_\text{adult} \times \text{adult}_{[i,t]} && \text{ where no missing data} \\
+\phi_{i,t} &= \alpha_\text{species} + \beta_\text{adult} \times p_{\text{adult}_{[i]}} && \text{ where age data missing}
+\end{aligned}
+$$
+
+Here, $p_{\text{adult}_{[i]}}$ is a parameter that can be estimated from the data. It has no dependence on capture event because each individual's age will only be unknown for a maximum of one winter, and within a winter their age category is assumed to remain constant.
+
+This is equivalent to the following approach for an individual likelihood:
+
+$$
+\begin{aligned}
+f\left(\boldsymbol{x}_i \mid \boldsymbol{\theta}\right)&= p_{\text{adult}_{[i]}} \times f\left(\boldsymbol{x}_i \mid \boldsymbol{\theta},\text{missing ages assumed adult}\right) 
+\\ &+ \left(1+p_{\text{adult}_{[i]}}\right) \times f\left(\boldsymbol{x}_i \mid \boldsymbol{\theta},\text{missing ages assumed juvenile}\right)
+\end{aligned}
+$$
+
+In the above, the likelihood for each individual with missing age data marginalises over the probability of the true ages being adult. This 'marginalising over' approach is a common method for handling latent discrete parameters in Stan [@matsuura_bayesian_2023].
+
 
 # Results
 
+## Model Diagnostics
+
+In this section we describe the results of model diagnostics checks that aim to evaluate convergence of the Markov chain to the target distribution.
+
+One useful criterion for diagnosing poor-fitting models that is unique to Hamiltonian Monte Carlo is the tracking of 'divergent transitions'. In the physical analogy of the frictionless puck, the total energy of the system is conserved. In Hamiltonian Monte Carlo, the total 'energy' at each step can be calculated to check for this conservation. If the density of the target distribution changes too quickly, the numerical integration procedure will fail and this energy quantity will not be conserved [@betancourt_identity_2020]. Stan will warn the user about these divergent transitions, and a variety of approaches can be deployed to remove them. These range from more informative priors to increasing the target average proposal acceptance probability to reparameterisation of the model. For each of the four models fitted, no divergent transitions were encountered in the final run.
+
+When attempting to evaluate the convergence of Markov chain-based models, it is common to run multiple chains and examine the extent to which they explore the same regions of high-probability. One approach is to plot the path of each chain in a trace plot. In a well-behaved model, the chains should mix well, and rapidly explore the entire high-probability region without getting stuck.
+
+The trace plots for a subset of the parameters are displayed below in Figures \@ref(fig:plt-trace-spec-phi) and \@ref(fig:plt-trace-month-phi). These chains are healthy, suggesting the Markov chains have converged to the target probability distribution.
+
+```{r plt-trace-spec-phi, fig.cap="Trace Plots for Species Intra-Winter Parameters.", echo = FALSE, out.width="75%"}
+plt_trace_spec_phi <- readRDS("Plots/plt_trace_spec_phi.rds")
+
+plt_trace_spec_phi
+```
+
+
+```{r plt-trace-month-phi, fig.cap="Trace Plots for Month Intra-Winter Parameters.", echo = FALSE, out.width="75%"}
+plt_trace_month_phi <- readRDS("Plots/plt_trace_month_phi.rds")
+
+plt_trace_month_phi
+```
+
+
+Another measure of chain convergence is $\hat R$, which compares the variance within a single chain to the variance between chains. If chains have mixed well, this statistic will be close to the minimum value of 1 [@vehtari_rank-normalization_2021]. Each parameter in the final version of these models has an $\hat R$ value of 1.01 or below, within the range recommended by Vehtari et al.
+
+
 ## Model Comparison
 
-## Intra-Winter Survival
 
-## Inter-Winter Survival
+
+As described in the methodology section, four models with different covariate structures were fit to the data collected. In this section, we describe the approach used to select one of these models for final inference.
+
+Cross-validation and information-criteria are common approaches to estimating the out-of-sample predictive power of statistical models. For Bayesian applications the Watanabe-Akaike (or Widely-Applicable) information criterion [@watanabe_widely_2012] is often recommended over deviance information criterion (DIC) or the original Akaike information criterion. WAIC generalises better than AIC or DIC to singular statistical models (such as most hierarchical models) and has the desirable property of being asymptotically equal to Bayes cross-validation loss [@watanabe_asymptotic_2010]. 
+
+However for finite n, WAIC can exhibit significant deviation from Bayes cross-validation loss, especially when weak priors are used [@gelman_understanding_2013]. Pareto Smoothed Importance Sampling (PSIS) [@vehtari_pareto_2022-1] provides a more robust estimate of cross-validation loss for finite n [@vehtari_practical_2017], and has a convenient implementation for Stan models in the loo package [@vehtari_loo_2022]. 
+
+Implementing PSIS or information criterion-based model selection procedures for models with latent variables (such as random effects) requires careful consideration [@merkle_bayesian_2019]. In particular, attention should be paid to the prediction task, and to which units in the model are exchangeable [@vehtari_when_2018]. For the purposes of this study, the log likelihood was constructed in Stan so that leave-one-out approximation methods are approximating the case of individual birds being left out of the model training, one at a time. This implies a prediction task of generating the capture history of a new individual from one of the three species studied. Alternative approaches such as leaving out a single data point, or leaving out entire capture events were rejected as inappropriate given the model structure.  
+
+Table 1 displays the theoretical expected log pointwise predictive density (ELPD) for each model, calculated using Pareto-smoothed importance sampling. The table also contrains the ELPD differences between each model and the one with the highest ELPD. The size of these differences should be compared against the standard error of the differences to understand the gap in estimated preditive power. For example, the gap between the best performing model (D), and the second best performing (C) is more than five times the standard error. By this metric, model D significantly outperforms model C. However the performances of models B & C are not robustly distinguished on this measure: the gap is within one standard error.
+
+As model D has the highest estimated predictive power, the results from this model will be used throughout the rest of the results section.
+
+```{r df-comp, fig.cap="Results of Model Comparison.", echo = FALSE}
+df_comp <- readRDS(file = "Models/df_comp.rds")
+
+knitr::kable(df_comp, digits =2,
+             caption = "Results of Model Comparison.")
+```
+
+
+
+## Intra-Winter Survival Results
+
+In this section we outline the model results for intra-winter survival.
+
+### Species
+
+As displayed in  Figure \@ref(fig:plt-spec-phi), intra-winter survival did not vary notably by species. The histogram displays the posterior distributions for each species parameter, and there is substantial ovelap. This is confirmed by the 95% credible intervals displayed in the bottom plot (the points displayed are mean parameter values). Lower parameter values mean lower survival rates.
+
+```{r plt-spec-phi, fig.cap="Intra-Winter survival rates show little variation by species.", echo = FALSE}
+
+plt_spec_phi <- readRDS("Plots/plt_spec_phi.rds")
+
+plt_spec_phi_conf <- readRDS("Plots/plt_spec_phi_conf.rds")
+
+
+grid.arrange(plt_spec_phi, plt_spec_phi_conf, ncol = 1)  
+```
+
+
+### Age
+
+By contrast, survival did vary by the age of individual. In Figure \@ref(fig:plt-age-phi-conf), the parameter for adult status is comfortably above zero (the vertical dotted line).
+
+```{r plt-age-phi-conf, fig.cap="Adult passerines are more likely to survive the winter.", echo = FALSE, out.width="75%"}
+
+plt_age_phi_conf <- readRDS("Plots/plt_age_phi_conf.rds")
+
+plt_age_phi_conf  
+```
+
+
+As an example of how this parameter-level difference might translate into survival probabilities, Figure \@ref(fig:plt-age-phi-prob) displays implied survival probabilities for a juvenile and adult robin in January of 2010. There is still substantial overlap due to the uncertainty in the non-age parameters, but it is unusual for adult to have survival probabilities below 70% in the month, and this is not the case for juveniles.
+
+
+```{r plt-age-phi-prob, fig.cap="Example survival probabilities of a robin in the winter of 2009-10.", echo = FALSE, out.width="75%"}
+
+plt_age_phi_prob <- readRDS("Plots/plt_age_phi_prob.rds")
+
+plt_age_phi_prob  
+```
+
+### Time
+
+In model D, intra-winter survival rates were permitted to vary both by month and by winter. 
+
+The pattern in the month parameter credible intervals is displayed in the left plot of Figure \@ref(fig:plt-mon-phi-conf). As might be expected the lowest survival rates are seen in the depths of winter: particular in the month leading up to the January capture event. However there is substantial overlap in the distributions of the parameters.
+
+By contrast, there is little pattern to be seen in the parameters that vary by winter. In the right plot of  \@ref(fig:plt-mon-phi-conf), the credible intervals of the winter parameters are plotted.
+
+```{r plt-mon-phi-conf, fig.cap="Monthly and annual intra-winter survival parameters.", echo = FALSE, out.width="75%"}
+
+plt_mon_phi_conf <- readRDS("Plots/plt_mon_phi_conf.rds")
+
+plt_wint_phi_conf <- readRDS("Plots/plt_wint_phi_conf.rds")
+
+grid.arrange(plt_mon_phi_conf, plt_wint_phi_conf, ncol = 2)  
+```
+
+
+## Inter-Winter Survival Results
+
+In this section we outline the model results for intra-winter survival, i.e. April - October. As discussed in the model covariate section, the inter-winter survival parameters are confounded with permanent migration away from the capture site in Valencia. Though the parameters are labelled as 'survival' parameters throughout, they should be considered as indicating the confluence of mortality and migration, with no way to distinguish between the two events.
+
+### Species
+
+Figure \@ref(fig:plt-spec-psi-conf) shows differing inter-winter survival by species. In particular, blackcaps 'survive' at a lower rate than robins. 
+
+The confounding between mortality and migration described above makes interpretation difficult, but some possible hypotheses can be suggested. Although these species all winter in the capture site in Valencia, their distribution in the breeding season will differ. Perhaps local environmental conditions contribute to varying survival rates over the summer months.
+
+Another potential explanation is that these different species have different migratory patterns. Perhaps blackcaps are more likely to stop migrating over the winter, wintering in Northern Europe at a higher rate. Or perhaps they are simply more variable in their wintering grounds: spending one year in Valencia, and another in Northern Africa, for example. However, this explanation conflicts with studies of blackcaps that find that they exhibit winter site fidelity [@cuadrado_all_1995], lending strength to the hypothesis that the differences are due to mortality differentials. 
+
+```{r plt-spec-psi-conf, fig.cap="Inter-Winter survival does show species-level effects.", echo = FALSE, out.width="75%"}
+
+plt_spec_psi_conf <- readRDS("Plots/plt_spec_psi_conf.rds")
+
+plt_spec_psi_conf  
+```
+
+
+### Year
+
+As for intra-winter survival, inter-winter survival parameters show little evidence of substantial variation by year.
+
+
+## Capture Results
+
+In this section we outline the model results for capture probabilities. One key take-away from the model results for capture probabilities is the overall low rate of captures. Figure \@ref(fig:plt-age-p-prob) shows capture probability credible intervals for adults and juveniles of all three species at the January 2009 capture event. The 95% posterior credible intervals for capture probabilities never rise above 5%, and the posterior means are typically in the 1-2% range.
+ 
+
+```{r plt-age-p-prob, fig.cap="Capture probabilities are lower than 5 percent for each species and age category.", echo = FALSE, out.width="75%"}
+
+plt_age_p_prob <- readRDS("Plots/plt_age_p_prob.rds")
+
+plt_age_p_prob  
+
+```
+
+
+### Species
+
+Species does not appear to substantially affect the probability of an individual being captured in the deployed nets. Although robins have the lowest capture probabilities, there is substantial overlap, as displayed in Figure \@ref(fig:plt-spec-p-conf).
+
+```{r plt-spec-p-conf, fig.cap="Capture probabilities do not differ substantially by species.", echo = FALSE, out.width="75%"}
+
+plt_spec_p_conf <- readRDS("Plots/plt_spec_p_conf.rds")
+
+plt_spec_p_conf  
+```
+
+
+### Age
+
+Perhaps surprisingly, the effect of age on capture probability is a reasonably precisely estimated 0, as Figure \@ref(fig:plt-age-p-conf) displays.
+
+```{r plt-age-p-conf, fig.cap="Age has no effect on capture probability.", echo = FALSE, out.width="75%"}
+
+plt_age_p_conf <- readRDS("Plots/plt_age_p_conf.rds")
+
+plt_age_p_conf  
+```
+
+
+### Time
+
+
+In model D, capture probabilities were permitted to vary both by month and by winter. 
+
+The pattern in the month parameter credible intervals is displayed in the left plot of Figure \@ref(fig:plt-mon-p-conf). There appears to be little seasonal pattern to the capture parameters, except that the lowest chance of capture occurs in April. Perhaps this is evidence of the violation of one of the model assumptions described in the covariate structure section: that birds who have not permanently migrated or died are present at each of the capture events. It's possible that by April many passerines have begun their migration northwards. However if this were the case we might expect a more pronounced pattern in the capture parameters: lowest in November, December, March and April, and highest in the depths of winter.
+
+There is a striking pattern in the winter covariates, with a trend towards higher capture probabilities as the years increase. In the right plot of Figure \@ref(fig:plt-mon-p-conf), the credible intervals for 2007 and 2017, for example, do not overlap at all. As the capture protocol was the same at each event, this is difficult to explain.
+
+```{r plt-mon-p-conf, fig.cap="Monthly and annual capture parameters.", echo = FALSE, out.width="75%"}
+
+plt_mon_p_conf <- readRDS("Plots/plt_mon_p_conf.rds")
+
+plt_wint_p_conf <- readRDS("Plots/plt_wint_p_conf.rds")
+
+grid.arrange(plt_mon_p_conf, plt_wint_p_conf, ncol = 2)  
+```
+
+
+## Missing Age Data
+
+One parameter was created for each individual with missing age covariate data. As described in the prior-setting section, these parameters were structured with random effects to permit sharing of information about whether adults or juveniles were more likely to have missing data.
+
+However, both individual parameters for the probability of being an adult at first capture, and the random effects parameters barely move of off the priors. The left plot of Figure \@ref(fig:plt-miss-p) shows a random collection of $p_{adult}$ posterior distributions for six individuals. They are nearly uniform across the interval [0,1], exactly as in the priors. The probability of being an adult implied by the random effects parameters is displayed on the right plot of Figure \@ref(fig:plt-miss-p), and this is also functionally uniform across the interval.
+
+This may be explained by the low amount of data impacted by missingness. Out of 1,889 individual birds in the study, 145 had missing age covariates in the first winter they were observed. However, by our assumptions any individuals with missing ages are known to be adults by their second winter. So the maximum number of capture events where data is missing is 7 per individual out of a possible 81. This combined with the relatively low capture rates lead to the lack of information encoded by the posteriors. 
+
+```{r plt-miss-p, fig.cap="Parameters for missing age covariates have barely moved off of their priors.", echo = FALSE, out.width="75%"}
+
+plt_miss_p <- readRDS("Plots/plt_miss_p.rds")
+
+plt_miss_re <- readRDS("Plots/plt_miss_re.rds")
+
+grid.arrange(plt_miss_p, plt_miss_re, ncol = 2)  
+
+```
+
 
 # Conclusion
 
-# Supplementatry Material {-}
+The present study confirmed that juvenile passerines have lower winter survival rates than adults. However, for survival / migration tendencies over the summer, species was the more important factor. The survival model that included time-varying effects had the best predictive power, suggesting that further research into the effects of environmental conditions (temperature, snowfall, food scarcity) may be fruitful.
 
+# Supplementary Material {-}
+
+## Stan and R Code {-}
+
+All Stan and R code used in this study is available at [https://github.com/J-Lawler/Bird-Demographics](https://github.com/J-Lawler/Bird-Demographics).
+
+
+\clearpage
 # References {-}
-

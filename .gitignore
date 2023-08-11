@@ -18,6 +18,10 @@
 # Output files from R CMD check
 /*.Rcheck/
 
+Data_Clean/
+Models/
+Plots/
+
 # RStudio files
 .Rproj.user/
 
